@@ -2,6 +2,7 @@ import { deserialize, type DeserializeResult } from '../librobocol/serialization
 import PeerDiscovery, { PeerType } from '../librobocol/packets/peerDiscovery';
 import Heartbeat from '../librobocol/packets/heartbeat';
 import Telemetry from '../librobocol/packets/telemetry';
+import { TelemetryDisplayFormat, SET_TELEMETRY_DISPLAY_FORMAT, parseDisplayFormat, isSystemOpModeName } from './telemetryFormat';
 import { RobotState } from '../librobocol/types';
 import Command from '../librobocol/packets/command';
 import Gamepad from '../librobocol/packets/gamepad';
@@ -63,6 +64,8 @@ export const robot = $state({
 
     systemTelemetry: null,
     telemetry: null,
+    /** set by the OpMode with telemetry.setDisplayFormat(); reset to CLASSIC when a system OpMode is initialized/started */
+    telemetryDisplayFormat: TelemetryDisplayFormat.Classic,
 });
 
 export const robotControl = $state({
@@ -193,6 +196,7 @@ export enum Commands {
     NotifyOpModeList = 'CMD_NOTIFY_OP_MODE_LIST',
     NotifyInitOpMode = 'CMD_NOTIFY_INIT_OP_MODE',
     NotifyRunOpMode = 'CMD_NOTIFY_RUN_OP_MODE',
+    SetTelemetryDisplayFormat = SET_TELEMETRY_DISPLAY_FORMAT,
     ShowStacktrace = 'CMD_SHOW_STACKTRACE',
     RumbleEffect = 'CMD_RUMBLE_EFFECT',
 
@@ -471,6 +475,9 @@ function handleCommand(packet: Command) {
             robot.activeOpMode = packet.extra;
             robot.opModeState = OpModeState.Init;
 
+            // like the official DS: a system OpMode (e.g. $Stop$Robot$) resets the format, a user OpMode does not
+            if (isSystemOpModeName(packet.extra)) robot.telemetryDisplayFormat = TelemetryDisplayFormat.Classic;
+
             if (robot.activeOpMode === DEFAULT_OP_MODE_NAME) {
                 robotControl.timer.start = null;
                 rumble.stopAll(); // never leave a continuous rumble running after stop
@@ -481,6 +488,8 @@ function handleCommand(packet: Command) {
             cameraPreview.close(); // the official DS closes the stream when the op mode starts
             robot.activeOpMode = packet.extra;
             robot.opModeState = OpModeState.Looping;
+
+            if (isSystemOpModeName(packet.extra)) robot.telemetryDisplayFormat = TelemetryDisplayFormat.Classic;
 
             let opMode = robot.opModes.find(o => o.name === robot.activeOpMode);
 
@@ -509,6 +518,12 @@ function handleCommand(packet: Command) {
         case Commands.RequestConfigurationsResp:
             robot.configurations = packet.extra;
             break;
+        case Commands.SetTelemetryDisplayFormat: {
+            // extra is the plain enum name, e.g. "MONOSPACE"; unknown values are ignored like DisplayFormat.valueOf() in the official DS
+            let format = parseDisplayFormat(packet.extra);
+            if (format) robot.telemetryDisplayFormat = format;
+            break;
+        }
         case Commands.NotifyActiveConfiguration:
             robot.activeConfiguration = packet.extra;
 
