@@ -13,6 +13,7 @@ Prerequisites: you must have [NodeJS](https://nodejs.org/ens) installed
 - Run `npm install` to download project dependencies
 - Run `npm run build` to build the app
 - Start the app using `npm start`
+- Run the tests using `npm test`
 
 ## Keyboard controller
 
@@ -45,3 +46,11 @@ KERNEL=="hidraw*", ATTRS{idVendor}=="0c12", ATTRS{idProduct}=="2e18", TAG+="uacc
 ```
 
 Debugging: start the app with `FTCDS_GAMEPAD_DEBUG=1` (or press `Ctrl+Shift+G`) to log raw gamepad input, and `FTCDS_RUMBLE_DEBUG=1` to log rumble output.
+
+## Camera preview
+
+When an op mode that uses a camera (e.g. a `VisionPortal`) is initialized, the Robot Controller announces a camera
+stream and a camera icon appears next to *Telemetry*. Like the *Camera Stream* menu of the official Driver Station,
+it can be opened after INIT and before START. It is not a live stream: each click on the image or on *Refresh* asks
+the Robot Controller for one frame. While the preview is open the gamepads are disabled and the op mode cannot be
+started; close the preview to continue.
