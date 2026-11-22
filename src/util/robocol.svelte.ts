@@ -103,7 +103,8 @@ function rumbleOutput(user: number, large: number, small: number, durationMs: nu
     const slot = user === 1 ? connection.gamepad1 : connection.gamepad2;
     if (slot.keyboard || slot.index < 0) { rumbleLog(`user ${user}: no physical gamepad bound, skipped`, { large, small, durationMs }); return; }
 
-    const pad = navigator.getGamepads()[slot.index];
+    const pads = typeof navigator !== 'undefined' && typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : null;
+    const pad = pads && pads[slot.index];
     if (!pad) { rumbleLog(`user ${user}: gamepad ${slot.index} gone`); return; }
 
     const actuator = (pad as any).vibrationActuator;
@@ -267,8 +268,11 @@ export function loop() {
     tickTimer();
 
     if (!connection.active || Date.now() - connection.lastHeartbeat > ASSUME_DISCONNECT_TIMER && !!connection.remote) {
-        if (connection.remote) rumble.stopAll();
-        if (connection.remote || cameraPreviewState.open || cameraPreviewState.available) cameraPreview.onDisconnect();
+        try {
+            if (connection.remote) rumble.stopAll();
+        } finally {
+            if (connection.remote || cameraPreviewState.open || cameraPreviewState.available) cameraPreview.onDisconnect();
+        }
 
         connection.remote = null;
         connection.seqNum = 0;
